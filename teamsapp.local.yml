@@ -55,6 +55,26 @@ provision:
       manifestPath: ./aad.manifest.json
       outputFilePath : ./build/aad.manifest.${{TEAMSFX_ENV}}.json
 
+  - uses: botAadApp/create
+    with:
+      # The Microsoft Entra application's display name
+      name: ${{CONFIG__MANIFEST__APPNAME__SHORT}}bot-${{TEAMSFX_ENV}}
+    writeToEnvironmentFile:
+      # The Microsoft Entra application's client id created for bot.
+      botId: BOT_ID
+      # The Microsoft Entra application's client secret created for bot.
+      botPassword: SECRET_BOT_PASSWORD
+
+  # Create or update the bot registration on dev.botframework.com
+  - uses: botFramework/create
+    with:
+      botId: ${{BOT_ID}}
+      name: ${{CONFIG__MANIFEST__APPNAME__SHORT}}bot-${{TEAMSFX_ENV}}
+      messagingEndpoint: ${{BOT_ENDPOINT}}/api/messages
+      description: ""
+      channels:
+        - name: msteams        
+
   # Validate using manifest schema
   - uses: teamsApp/validateManifest
     with:
@@ -109,7 +129,7 @@ deploy:
   # Generate runtime environment variables
   - uses: file/createOrUpdateEnvironmentFile
     with:
-      target: ./.localConfigs
+      target: ./tab/.localConfigs
       envs:
         BROWSER: none
         HTTPS: true
@@ -120,10 +140,17 @@ deploy:
   # Generate runtime environment variables
   - uses: file/createOrUpdateEnvironmentFile
     with:
-      target: ./.localConfigs
+      target: ./tab/.localConfigs
       envs:
         REACT_APP_START_LOGIN_PAGE_URL: ${{TAB_ENDPOINT}}/auth-start.html
         REACT_APP_CLIENT_ID: ${{AAD_APP_CLIENT_ID}}
+
+  - uses: file/createOrUpdateEnvironmentFile
+    with:
+      target: ./bot/.localConfigs
+      envs:
+        BOT_ID: ${{BOT_ID}}
+        BOT_PASSWORD: ${{SECRET_BOT_PASSWORD}}
 
   # Run npm command
   - uses: cli/runNpmCommand

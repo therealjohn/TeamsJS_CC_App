@@ -5,6 +5,7 @@
             "label": "Pre Debug Check & Start All",
             "dependsOn": [
                 "validate local prerequisites",
+                "Start local tunnel",
                 "prepare local environment",
                 "Start All"
             ],
@@ -14,6 +15,7 @@
             "label": "Pre Debug Check & Start All & Install App",
             "dependsOn": [
                 "validate local prerequisites",
+                "Start local tunnel",
                 "prepare local environment",
                 "Start All"
             ],
@@ -35,7 +37,9 @@
                     "portOccupancy" // Validate available ports to ensure those debug ones are not occupied.
                 ],
                 "portOccupancy": [
-                    53000 // tab service port
+                    53000, // tab service port
+                    3978, // bot service port
+                    9239 // bot inspector port for Node.js debugger
                 ]
             }
         },
@@ -70,6 +74,7 @@
         {
             "label": "Start All",
             "dependsOn": [
+                "Start bot",
                 "Start Frontend"
             ]
         },
@@ -80,8 +85,56 @@
             "isBackground": true,
             "problemMatcher": "$teamsfx-frontend-watch",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/tab"
             }
-        }
+        },
+        {
+            // Start the local tunnel service to forward public URL to local port and inspect traffic.
+            // See https://aka.ms/teamsfx-tasks/local-tunnel for the detailed args definitions.
+            "label": "Start local tunnel",
+            "type": "teamsfx",
+            "command": "debug-start-local-tunnel",
+            "args": {
+                "type": "dev-tunnel",
+                "ports": [
+                    {
+                        "portNumber": 3978,
+                        "protocol": "http",
+                        "access": "public",
+                        "writeToEnvironmentFile": {
+                            "endpoint": "BOT_ENDPOINT", // output tunnel endpoint as BOT_ENDPOINT
+                            "domain": "BOT_DOMAIN" // output tunnel domain as BOT_DOMAIN
+                        }
+                    }
+                ],
+                "env": "local"
+            },
+            "isBackground": true,
+            "problemMatcher": "$teamsfx-local-tunnel-watch"
+        },
+        {
+            "label": "Start bot",
+            "type": "shell",
+            "command": "npm run dev:teamsfx",
+            "isBackground": true,
+            "options": {
+                "cwd": "${workspaceFolder}/bot"
+            },
+            "problemMatcher": {
+                "pattern": [
+                    {
+                        "regexp": "^.*$",
+                        "file": 0,
+                        "location": 1,
+                        "message": 2
+                    }
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "[nodemon] starting",
+                    "endsPattern": "restify listening to|Bot/ME service listening at|[nodemon] app crashed"
+                }
+            }
+        },
     ]
 }
